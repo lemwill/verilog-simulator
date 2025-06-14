@@ -1,4 +1,5 @@
 #include "design_graph.hpp"
+#include "logic.hpp"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -23,7 +24,7 @@ int main(int argc, char *argv[])
     }
 
     // Parse optional input signal assignments (signal=0/1)
-    std::unordered_map<std::string, verilog_simulator::Node::Logic> inputs;
+    std::unordered_map<std::string, verilog_simulator::Logic> inputs;
     for (int i = 2; i < argc; ++i)
     {
         std::string token = argv[i];
@@ -32,7 +33,7 @@ int main(int argc, char *argv[])
             continue;
         std::string name = token.substr(0, eqPos);
         char valChar = token[eqPos + 1];
-        verilog_simulator::Node::Logic val = (valChar == '1') ? verilog_simulator::Node::Logic::ONE : verilog_simulator::Node::Logic::ZERO;
+        verilog_simulator::Logic val = (valChar == '1') ? verilog_simulator::Logic::ONE : verilog_simulator::Logic::ZERO;
         inputs[name] = val;
     }
 
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
 
         // Print value if not X
         auto val = node->getValue();
-        char vchar = (val == verilog_simulator::Node::Logic::ONE) ? '1' : (val == verilog_simulator::Node::Logic::ZERO ? '0' : 'X');
+        char vchar = verilog_simulator::to_char(val);
         std::cout << "  Value: " << vchar << std::endl;
     }
 

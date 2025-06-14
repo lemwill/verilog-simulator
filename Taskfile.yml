@@ -20,7 +20,7 @@ tasks:
       - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
     cmds:
       - mkdir -p {{.BUILD_DIR}}
-      - "{{.CXX}} {{.CXXFLAGS}} src/main.cpp src/design_graph.cpp -o {{.BUILD_DIR}}/{{.BINARY_NAME}} `pkg-config --cflags --libs uhdm`"
+      - "{{.CXX}} {{.CXXFLAGS}} $(find src -name '*.cpp') -o {{.BUILD_DIR}}/{{.BINARY_NAME}} `pkg-config --cflags --libs uhdm`"
 
   clean:
     desc: Clean build artifacts

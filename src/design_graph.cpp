@@ -1,4 +1,7 @@
 #include "design_graph.hpp"
+#include "node.hpp"
+#include "edge.hpp"
+#include "logic.hpp"
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -6,22 +9,6 @@
 
 namespace verilog_simulator
 {
-
-    Node::Node(const std::string &name, Type type)
-        : name_(name), type_(type) {}
-
-    void Node::addInput(std::shared_ptr<Edge> edge)
-    {
-        inputs_.push_back(edge);
-    }
-
-    void Node::addOutput(std::shared_ptr<Edge> edge)
-    {
-        outputs_.push_back(edge);
-    }
-
-    Edge::Edge(std::shared_ptr<Node> source, std::shared_ptr<Node> target)
-        : source_(std::move(source)), target_(std::move(target)) {}
 
     std::shared_ptr<Node> DesignGraph::addNode(const std::string &name, Node::Type type)
     {
@@ -209,9 +196,9 @@ namespace verilog_simulator
         }
     }
 
-    static Node::Logic andReduce(const std::vector<Node::Logic> &vals)
+    static Logic andReduce(const std::vector<Logic> &vals)
     {
-        using L = Node::Logic;
+        using L = Logic;
         if (vals.empty())
             return L::X;
         L res = L::ONE;
@@ -262,13 +249,13 @@ namespace verilog_simulator
                 auto destNode = getNode(as.lhs);
                 if (!destNode)
                     continue;
-                std::vector<Node::Logic> inVals;
+                std::vector<Logic> inVals;
                 for (const auto &s : as.rhs)
                 {
                     auto n = getNode(s);
-                    inVals.push_back(n ? n->getValue() : Node::Logic::X);
+                    inVals.push_back(n ? n->getValue() : Logic::X);
                 }
-                Node::Logic newVal = andReduce(inVals);
+                Logic newVal = andReduce(inVals);
                 if (newVal != destNode->getValue())
                 {
                     destNode->setValue(newVal);
@@ -278,7 +265,7 @@ namespace verilog_simulator
         }
     }
 
-    void DesignGraph::setInputs(const std::unordered_map<std::string, Node::Logic> &inputs)
+    void DesignGraph::setInputs(const std::unordered_map<std::string, Logic> &inputs)
     {
         for (const auto &[name, val] : inputs)
         {
@@ -293,10 +280,10 @@ namespace verilog_simulator
         evaluateCombinational();
     }
 
-    Node::Logic DesignGraph::getValue(const std::string &nodeName) const
+    Logic DesignGraph::getValue(const std::string &nodeName) const
     {
         auto n = getNode(nodeName);
-        return n ? n->getValue() : Node::Logic::X;
+        return n ? n->getValue() : Logic::X;
     }
 
     std::string DesignGraph::toDot() const
