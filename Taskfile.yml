@@ -1,0 +1,55 @@
+version: '3'
+
+vars:
+  BUILD_DIR: build
+  BINARY_NAME: uhdm_reader
+  CXX: g++
+  CXXFLAGS: -std=c++17 -Wall -Wextra -Wpedantic -Iinclude -Isrc
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  build:
+    desc: Build the project
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - "{{.CXX}} {{.CXXFLAGS}} src/main.cpp src/uhdm_reader.cpp -o {{.BUILD_DIR}}/{{.BINARY_NAME}} `pkg-config --cflags --libs uhdm`"
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+
+  run:
+    desc: Run the program
+    deps: [build]
+    cmds:
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}}
+
+  install:
+    desc: Install the program
+    deps: [build]
+    cmds:
+      - sudo cp {{.BUILD_DIR}}/{{.BINARY_NAME}} /usr/local/bin/
+
+  uninstall:
+    desc: Uninstall the program
+    cmds:
+      - sudo rm -f /usr/local/bin/{{.BINARY_NAME}}
+
+  format:
+    desc: Format source code using clang-format
+    cmds:
+      - clang-format -i src/*.cpp include/*.hpp
+
+  lint:
+    desc: Run cppcheck for static analysis
+    cmds:
+      - cppcheck --enable=all --suppress=missingIncludeSystem src/ include/
+
+  test:
+    desc: Run tests (placeholder for future test implementation)
+    cmds:
+      - echo "Tests not implemented yet" 
