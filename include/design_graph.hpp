@@ -26,6 +26,13 @@ namespace verilog_simulator
             CONSTANT // Constant values
         };
 
+        enum class Logic : uint8_t
+        {
+            ZERO,
+            ONE,
+            X
+        };
+
         Node(const std::string &name, Type type);
 
         const std::string &getName() const { return name_; }
@@ -36,11 +43,15 @@ namespace verilog_simulator
         void addInput(std::shared_ptr<Edge> edge);
         void addOutput(std::shared_ptr<Edge> edge);
 
+        void setValue(Logic v) { value_ = v; }
+        Logic getValue() const { return value_; }
+
     private:
         std::string name_;
         Type type_;
         std::vector<std::shared_ptr<Edge>> inputs_;
         std::vector<std::shared_ptr<Edge>> outputs_;
+        Logic value_{Logic::X};
     };
 
     // Represents a connection between nodes
@@ -78,9 +89,27 @@ namespace verilog_simulator
         // Build the graph from UHDM data
         bool buildFromUHDM(const std::string &uhdmFile);
 
+        // Simulation helpers
+        void setInputs(const std::unordered_map<std::string, Node::Logic> &inputs);
+        void evaluate();
+        Node::Logic getValue(const std::string &nodeName) const;
+
+        // Export graph
+        std::string toDot() const;
+        std::string toJson() const;
+        bool saveDot(const std::string &filename) const;
+        bool saveJson(const std::string &filename) const;
+
     private:
+        struct Assignment
+        {
+            std::string lhs;
+            std::vector<std::string> rhs;
+        };
+
         std::unordered_map<std::string, std::shared_ptr<Node>> nodes_;
         std::vector<std::shared_ptr<Edge>> edges_;
+        std::vector<Assignment> assignments_;
 
         // Helper methods for processing UHDM data
         void processModule(UHDM::module_inst *module);
@@ -91,5 +120,7 @@ namespace verilog_simulator
 
         // Recursively collect net/signal names referenced by an expression
         void collectSignalNames(UHDM::any *expr, std::vector<std::string> &names);
+
+        void evaluateCombinational();
     };
 }

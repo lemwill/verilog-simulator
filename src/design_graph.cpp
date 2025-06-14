@@ -1,5 +1,8 @@
 #include "design_graph.hpp"
 #include <iostream>
+#include <sstream>
+#include <fstream>
+#include <algorithm>
 
 namespace verilog_simulator
 {
@@ -206,6 +209,22 @@ namespace verilog_simulator
         }
     }
 
+    static Node::Logic andReduce(const std::vector<Node::Logic> &vals)
+    {
+        using L = Node::Logic;
+        if (vals.empty())
+            return L::X;
+        L res = L::ONE;
+        for (auto v : vals)
+        {
+            if (v == L::ZERO)
+                return L::ZERO;
+            if (v == L::X)
+                res = L::X;
+        }
+        return res;
+    }
+
     void DesignGraph::processContAssign(UHDM::cont_assign *assign)
     {
         std::string lhsName(assign->Lhs()->VpiName());
@@ -225,6 +244,157 @@ namespace verilog_simulator
             addEdge(src, lhsName);
             std::cout << "Found continuous assignment: " << src << " -> " << lhsName << std::endl;
         }
+
+        assignments_.push_back(Assignment{lhsName, sources});
+    }
+
+    void DesignGraph::evaluateCombinational()
+    {
+        // Simple two-pass evaluation assuming assignments use AND of sources
+        // assume inputs already set; others start as X (already default)
+
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            for (const auto &as : assignments_)
+            {
+                auto destNode = getNode(as.lhs);
+                if (!destNode)
+                    continue;
+                std::vector<Node::Logic> inVals;
+                for (const auto &s : as.rhs)
+                {
+                    auto n = getNode(s);
+                    inVals.push_back(n ? n->getValue() : Node::Logic::X);
+                }
+                Node::Logic newVal = andReduce(inVals);
+                if (newVal != destNode->getValue())
+                {
+                    destNode->setValue(newVal);
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    void DesignGraph::setInputs(const std::unordered_map<std::string, Node::Logic> &inputs)
+    {
+        for (const auto &[name, val] : inputs)
+        {
+            auto n = getNode(name);
+            if (n)
+                n->setValue(val);
+        }
+    }
+
+    void DesignGraph::evaluate()
+    {
+        evaluateCombinational();
+    }
+
+    Node::Logic DesignGraph::getValue(const std::string &nodeName) const
+    {
+        auto n = getNode(nodeName);
+        return n ? n->getValue() : Node::Logic::X;
+    }
+
+    std::string DesignGraph::toDot() const
+    {
+        std::ostringstream oss;
+        oss << "digraph Design {\n";
+
+        // Declare nodes with shapes based on type
+        for (const auto &pair : nodes_)
+        {
+            const auto &node = pair.second;
+            std::string shape;
+            switch (node->getType())
+            {
+            case Node::Type::GATE:
+                shape = "box";
+                break;
+            case Node::Type::PORT:
+                shape = "oval";
+                break;
+            case Node::Type::NET:
+                shape = "ellipse";
+                break;
+            default:
+                shape = "circle";
+                break;
+            }
+            oss << "  \"" << node->getName() << "\" [shape=" << shape << "];\n";
+        }
+
+        // Declare edges
+        for (const auto &edge : edges_)
+        {
+            oss << "  \"" << edge->getSource()->getName() << "\" -> \"" << edge->getTarget()->getName() << "\";\n";
+        }
+
+        oss << "}\n";
+        return oss.str();
+    }
+
+    std::string DesignGraph::toJson() const
+    {
+        std::ostringstream oss;
+        oss << "{\n  \"nodes\": [\n";
+        bool first = true;
+        for (const auto &pair : nodes_)
+        {
+            if (!first)
+                oss << ",\n";
+            first = false;
+            const auto &node = pair.second;
+            oss << "    {\"name\": \"" << node->getName() << "\", \"type\": \"";
+            switch (node->getType())
+            {
+            case Node::Type::GATE:
+                oss << "GATE";
+                break;
+            case Node::Type::PORT:
+                oss << "PORT";
+                break;
+            case Node::Type::NET:
+                oss << "NET";
+                break;
+            default:
+                oss << "CONST";
+                break;
+            }
+            oss << "\"}";
+        }
+        oss << "\n  ],\n  \"edges\": [\n";
+        first = true;
+        for (const auto &edge : edges_)
+        {
+            if (!first)
+                oss << ",\n";
+            first = false;
+            oss << "    {\"source\": \"" << edge->getSource()->getName() << "\", \"target\": \"" << edge->getTarget()->getName() << "\"}";
+        }
+        oss << "\n  ]\n}\n";
+        return oss.str();
+    }
+
+    bool DesignGraph::saveDot(const std::string &filename) const
+    {
+        std::ofstream ofs(filename);
+        if (!ofs)
+            return false;
+        ofs << toDot();
+        return true;
+    }
+
+    bool DesignGraph::saveJson(const std::string &filename) const
+    {
+        std::ofstream ofs(filename);
+        if (!ofs)
+            return false;
+        ofs << toJson();
+        return true;
     }
 
 } // namespace verilog_simulator
