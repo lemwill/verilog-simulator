@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   BUILD_DIR: build
-  BINARY_NAME: uhdm_reader
+  BINARY_NAME: verilog_simulator
   CXX: g++
   CXXFLAGS: -std=c++17 -Wall -Wextra -Wpedantic -Iinclude -Isrc
 
@@ -15,7 +15,7 @@ tasks:
     desc: Build the project
     cmds:
       - mkdir -p {{.BUILD_DIR}}
-      - "{{.CXX}} {{.CXXFLAGS}} src/main.cpp src/uhdm_reader.cpp -o {{.BUILD_DIR}}/{{.BINARY_NAME}} `pkg-config --cflags --libs uhdm`"
+      - "{{.CXX}} {{.CXXFLAGS}} src/main.cpp src/design_graph.cpp -o {{.BUILD_DIR}}/{{.BINARY_NAME}} `pkg-config --cflags --libs uhdm`"
 
   clean:
     desc: Clean build artifacts
@@ -26,7 +26,7 @@ tasks:
     desc: Run the program
     deps: [build]
     cmds:
-      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}}
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} slpp_all/surelog.uhdm
 
   install:
     desc: Install the program
