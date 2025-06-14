@@ -1,7 +1,0 @@
-digraph Design {
-  "out" [shape=ellipse];
-  "b" [shape=ellipse];
-  "a" [shape=ellipse];
-  "a" -> "out";
-  "b" -> "out";
-}
